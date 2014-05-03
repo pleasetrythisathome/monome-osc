@@ -1,9 +1,24 @@
-(ns monome-osc.serialosc
-  (:require [clojure.core.async :refer [alt! go put! <! >! chan timeout]]
+(ns monome-osc.core
+  (:refer-clojure :exclude [map reduce into partition partition-by take merge])
+  (:require [clojure.core.async :refer :all :as async]
             [clojure.pprint :refer [pprint]])
   (:use [overtone.osc]))
 
-;(osc-debug true)
+;; log
+
+(def log-chan (chan))
+
+(thread
+ (loop []
+   (when-let [v (<!! log-chan)]
+     (println v)
+     (recur)))
+ (println "Log Closed"))
+
+(defn log [msg]
+  (>!! log-chan (or msg "nil")))
+
+;; communication
 
 (defonce PORTS {:serialosc 12002
                 :server 12001})
