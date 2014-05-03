@@ -4,7 +4,7 @@
             [clojure.pprint :refer [pprint]])
   (:use [overtone.osc]))
 
-;; log
+;; utils
 
 (def log-chan (chan))
 
@@ -27,30 +27,30 @@
 (defonce server (osc-server (:server PORTS)))
 (defonce to-serialosc (osc-client host (:serialosc PORTS)))
 
-;(osc-close server)
+(defonce responses (chan (sliding-buffer 1)))
+(osc-listen server #(put! responses %) :listen)
+
+(defonce broadcaster (pub responses :path))
+
+(defn listen-path
+  [tag path]
+  (let [listener (chan)
+        out (chan)]
+    (sub broadcaster path listener)
+    (take! listener #(put! out [tag (:args %)]))
+    out))
+
+;; devices
 
 (defonce devices (atom {}))
-(defonce clients (atom {}))
-
-(defn listen-disconnect
-  []
-  (osc-send to-serialosc "/serialosc/notify" host (:server PORTS)))
-
-(defn bind-handlers
-  [chan handlers]
-  (doall (map (fn [[action path]] (osc-handle server path #(put! chan [action (:args %)]))) handlers)))
-
-(defn rm-handlers
-  [handlers]
-  (doall (map (fn [[action path]] (osc-rm-handler server path)) handlers)))
 
 (defn get-devices
   []
-  (vals @devices))
+  (clojure.core/map :device @devices))
 
 (defn get-client
   [{:keys [id] :as device}]
-  (get @clients id))
+  (get-in @devices [id :client]))
 
 (defn send-to [{:keys [prefix] :as device} path & args]
   (let [client (get-client device)]
@@ -61,9 +61,63 @@
   (let [client (get-client device)]
     (osc-send client "/sys/prefix" prefix)))
 
-;; grid actions
+;; connection
 
-;;leds
+(defn listen-to
+  [monome]
+  (let [prefix (:prefix monome)
+        handlers [[:button (str prefix "/grid/key")]
+                  [:tilt (str prefix "/tilt")]]]
+    (async/merge (clojure.core/map #(apply listen-path %) handlers))))
+
+(defn connect
+  [{:keys [id port prefix] :as device}]
+  (let [client (osc-client host port)
+        events (listen-to device)]
+    (swap! devices #(assoc % id {:device device
+                                 :client client
+                                 :events events}))
+    (osc-send client "/sys/port" (:server PORTS))
+    (set-prefix device prefix)))
+
+(defn disconnect
+  [{:keys [id] :as device}]
+  (let [client (get-client device)]
+    (osc-close client)
+    (swap! devices #(dissoc % id))))
+
+
+(defn request-info [path]
+  (osc-send to-serialosc path host (:server PORTS)))
+
+(defn monitor-devices
+  []
+  (let [handlers [[:add "/serialosc/device"]
+                  [:add "/serialosc/add"]
+                  [:remove "/serialosc/remove"]]
+        connection (async/merge (clojure.core/map #(apply listen-path %) handlers))]
+    (reset! devices {})
+    (request-info "/serialosc/list")
+    (go
+     (loop []
+       (when-let [[action [id type port]] (<! connection)]
+         (let [device {:id (keyword id)
+                       :type type
+                       :port port
+                       :prefix (str "/" id)}]
+           (case action
+            :add (connect device)
+            :remove (disconnect device)))
+         (request-info "/serialosc/notify")
+         (recur))))))
+
+(defn watch-devices []
+  (let [out (chan)]
+    (add-watch devices :change (fn [key ref old new] (when-not (= old new)
+                                                      (put! out new))))
+    out))
+
+;; led
 
 (defn row->bitmask
   [row]
@@ -91,8 +145,6 @@
   "x-off must be a multiple of 8"
   [monome x y-off state]
   (send-to monome "/grid/led/col" x y-off (row->bitmask state)))
-
-;; animations
 
 (defn connect-animation
   [monome]
@@ -123,74 +175,18 @@
     (dotimes [y rows]
       (make-cell monome x y))))
 
-;; add brightness operations
-
-;; buttons
-
-(defn monome-listen
-  [monome]
-  (let [out (chan)
-        prefix (:prefix monome)
-        handlers [[:button (str prefix "/grid/key")]
-                  [:tilt (str prefix "/tilt")]]]
-    (bind-handlers out handlers)
-    out))
-
-;; connection
-
-(defn connect
-  [{:keys [id port prefix] :as device}]
-  (let [client (osc-client host port)]
-    (swap! clients #(assoc % id client))
-    (swap! devices #(assoc % id device))
-    (osc-send client "/sys/port" (:server PORTS))
-    (set-prefix device prefix)
-    (connect-animation device)))
-
-(defn disconnect
-  [{:keys [id] :as device}]
-  (let [client (get-client device)]
-    (osc-close client)
-    (swap! clients #(dissoc % id))
-    (swap! devices #(dissoc % id))))
-
-(defn monitor-devices
-  []
-  (let [connection (chan)
-        handlers [[:add "/serialosc/device"]
-                  [:add "/serialosc/add"]
-                  [:remove "/serialosc/remove"]]
-        out (chan)]
-    (reset! devices {})
-
-    (add-watch devices :change (fn [key ref old new] (when-not (= old new)
-                                                      (put! out new))))
-
-    (rm-handlers handlers)
-    (bind-handlers connection handlers)
-
-    (osc-send to-serialosc "/serialosc/list" host (:server PORTS))
-
-    (go
-     (while true
-       (let [[action [id type port]] (<! connection)
-             device {:id (keyword id)
-                     :type type
-                     :port port
-                     :prefix (str "/" id)}]
-         (case action
-           :add (connect device)
-           :remove (disconnect device))
-         (listen-disconnect))))
-    out))
-
-;(osc-debug true)
+;; (osc-debug true)
 
 ;; tests
 
-;; (def connected-devices (monitor-devices))
+;; (osc-listen server log :debug)
+;; (osc-rm-listener server :debug)
+
+;; (take! responses log)
+
+;; (monitor-devices)
 ;; (def monome (first (get-devices)))
-;; (pprint monome)
+;; (log monome)
 ;; (set-all monome 1)
 ;; (set-all monome 0)
 
