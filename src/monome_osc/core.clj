@@ -57,7 +57,7 @@
 
 (defn get-devices
   []
-  (clojure.core/map :device (vals @devices)))
+  (clojure.core/map :info (vals @devices)))
 
 (defn get-client
   [{:keys [id] :as device}]
@@ -68,38 +68,38 @@
     (apply (partial osc-send client (str prefix path)) args)))
 
 (defn set-prefix
-  [device prefix]
-  (let [client (get-client device)]
-    (osc-send client "/sys/prefix" prefix)))
+  ([device prefix] (set-prefix device prefix (get-client device)))
+  ([device prefix client]
+     (osc-send client "/sys/prefix" prefix)))
 
 (defn get-info
-  [device]
-  (let [out (chan)
-        client (get-client device)
-        paths [[:port "/sys/port"]
-               [:host "/sys/host"]
-               [:id "/sys/id"]
-               [:prefix "/sys/prefix"]
-               [:rotation "/sys/rotation"]
-               [:size "/sys/size"]]
-        listeners (clojure.core/map (fn [[tag path]]
-                                      (tag-chan (constantly tag) (listen-path path)))
-                                    paths)
-        fail (timeout 1000)]
-    (go
-     (osc-send client "/sys/info")
-     (loop [info {} failed false]
-       (if (or failed (every? #(contains? info %) (clojure.core/map first paths)))
-         (do
-           (clojure.core/map close! listeners)
-           (put! out info))
-         (if-let [[[tag v] c] (alts! (conj listeners fail))]
-           (let [parsed (if (= 1 (count v))
-                          (first v)
-                          (into-array v))]
-             (recur (assoc info tag parsed) false))
-           (recur info true)))))
-    out))
+  ([device] (get-info device (get-client device)))
+  ([device client]
+     (let [out (chan)
+           paths [[:port "/sys/port"]
+                  [:host "/sys/host"]
+                  [:id "/sys/id"]
+                  [:prefix "/sys/prefix"]
+                  [:rotation "/sys/rotation"]
+                  [:size "/sys/size"]]
+           listeners (clojure.core/map (fn [[tag path]]
+                                         (tag-chan (constantly tag) (listen-path path)))
+                                       paths)
+           fail (timeout 1000)]
+       (go
+        (osc-send client "/sys/info")
+        (loop [info {} failed false]
+          (if (or failed (every? #(contains? info %) (clojure.core/map first paths)))
+            (do
+              (clojure.core/map close! listeners)
+              (put! out info))
+            (if-let [[[tag v] c] (alts! (conj listeners fail))]
+              (let [parsed (if (= 1 (count v))
+                             (first v)
+                             (into-array v))]
+                (recur (assoc info tag parsed) false))
+              (recur info true)))))
+       out)))
 
 ;; events
 
@@ -122,20 +122,21 @@
   (let [client (osc-client host port)
         events (listen-to device)]
     (osc-send client "/sys/port" (:server PORTS))
-    (set-prefix device prefix)
-    (swap! devices #(assoc % id {:device device
-                                 :client client
-                                 :events events}))
-    (put! connection {:action :connect
-                      :device device})))
+    (set-prefix device prefix client)
+    (let [info (<!! (get-info device client))]
+      (swap! devices assoc id {:info info
+                               :client client
+                               :events events})
+      (put! connection {:action :connect
+                        :device info}))))
 
 (defn disconnect
   [{:keys [id] :as device}]
-  (put! connection {:action :disconnect
-                    :device device})
   (let [client (get-client device)]
     (osc-close client)
-    (swap! devices #(dissoc % id))))
+    (swap! devices #(dissoc % id))
+    (put! connection {:action :disconnect
+                      :device device})))
 
 (defn watch-devices []
   (let [out (chan)]
@@ -158,7 +159,7 @@
     (go
      (loop []
        (when-let [[action [id type port]] (<! serialosc)]
-         (let [device {:id (keyword id)
+         (let [device {:id id
                        :type type
                        :port port
                        :prefix (str "/" id)}]
