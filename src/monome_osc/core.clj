@@ -72,7 +72,36 @@
   (let [client (get-client device)]
     (osc-send client "/sys/prefix" prefix)))
 
-;; connection
+(defn get-info
+  [device]
+  (let [out (chan)
+        client (get-client device)
+        paths [[:port "/sys/port"]
+               [:host "/sys/host"]
+               [:id "/sys/id"]
+               [:prefix "/sys/prefix"]
+               [:rotation "/sys/rotation"]
+               [:size "/sys/size"]]
+        listeners (clojure.core/map (fn [[tag path]]
+                                      (tag-chan (constantly tag) (listen-path path)))
+                                    paths)
+        fail (timeout 1000)]
+    (go
+     (osc-send client "/sys/info")
+     (loop [info {} failed false]
+       (if (or failed (every? #(contains? info %) (clojure.core/map first paths)))
+         (do
+           (clojure.core/map close! listeners)
+           (put! out info))
+         (if-let [[[tag v] c] (alts! (conj listeners fail))]
+           (let [parsed (if (= 1 (count v))
+                          (first v)
+                          (into-array v))]
+             (recur (assoc info tag parsed) false))
+           (recur info true)))))
+    out))
+
+;; events
 
 (defn listen-to
   [monome]
