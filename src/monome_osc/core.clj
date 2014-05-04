@@ -15,8 +15,9 @@
      (recur)))
  (println "Log Closed"))
 
-(defn log [msg]
-  (>!! log-chan (or msg "nil")))
+(defn log [& msgs]
+  (doseq [msg msgs]
+    (>!! log-chan (or msg "nil"))))
 
 ;; communication
 
