@@ -31,12 +31,18 @@
 ;; (def monome (first (get-devices)))
 ;; (log monome)
 
-
 ;; (take! (get-info monome) log)
 
 ;; (set-all monome 1)
 ;; (set-all monome 0)
 
+;; (set-brightness-all monome 10)
+;; (set-brightness-all monome 15)
+
+#_(let [[w h] (:size monome)]
+  (doseq [x (range w)
+          y (range h)]
+   (set-brightness monome x y x)))
 
 ;; (set-led monome 0 0 1)
 ;; (set-led monome 0 0 0)
