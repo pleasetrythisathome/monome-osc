@@ -31,20 +31,25 @@
 (defonce to-serialosc (osc-client host (:serialosc PORTS)))
 
 (defonce responses (chan (sliding-buffer 1)))
+(defonce pub-responses (pub responses :path))
 (osc-listen server #(put! responses %) :listen)
-
-(defonce broadcaster (pub responses :path))
 
 (defn listen-path
   [path]
-  (let [out (chan)]
-    (sub broadcaster path out)
+  (let [out (chan (sliding-buffer 1))]
+    (sub pub-responses path out)
     (async/map< :args out)))
 
 (defn tag-chan
-  [tag in]
-  (async/map< (partial vector tag) in))
+  [tagfn in]
+  (async/map< (juxt tagfn identity) in))
 
+(defn listen-all
+  "listens and merges a collections of vectors [tag path]"
+  [paths]
+  (async/merge (clojure.core/map (fn [[tag path]]
+                                   (tag-chan (constantly tag) (listen-path path)))
+                                 paths)))
 
 ;; devices
 
