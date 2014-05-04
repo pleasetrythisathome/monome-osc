@@ -199,33 +199,33 @@
   (send-to monome "/grid/led/col" x y-off (row->bitmask state)))
 
 (defn connect-animation
-  [monome]
-  (let [row-on (apply vector (repeat 10 1))
-        row-off (apply vector (repeat 10 0))]
+  [{:keys [size] :as monome}]
+  (let [speed 25
+        cols (first size)
+        rows (second size)
+        on (apply vector (repeat rows 1))
+        off (apply vector (repeat rows 0))]
     (go
      (loop [col 0]
-       (set-column monome col 0 row-on)
-       (<! (timeout 25))
-       (set-column monome col 0 row-off)
-       (when (< col 18)
+       (set-column monome col 0 on)
+       (<! (timeout speed))
+       (set-column monome col 0 off)
+       (when (< col cols)
          (recur (inc col)))))))
 
-(defn make-cell [monome x y]
-  (let [stagger 200
-        length 2]
-    (go
-     (<! (timeout (rand-int stagger)))
-     (loop []
-       (set-led monome x y 1)
-       (<! (timeout (max 150 (rand-int stagger))))
-       (set-led monome x y 0)
-       (when-not (zero? (rand-int length))
-         (recur))))))
+;; init
 
-(defn make-scene [monome rows cols]
-  (dotimes [x cols]
-    (dotimes [y rows]
-      (make-cell monome x y))))
+(def watcher (watch-devices))x
+(go-loop []
+         (when-let [{:keys [action device]} (<! watcher)]
+           (case action
+             :connect (connect-animation device)
+             :disconnect nil)
+           (recur)))
+
+(monitor-devices)
+
+;; (close! watcher)
 
 ;; (osc-debug true)
 
@@ -236,15 +236,9 @@
 
 ;; (monitor-devices)
 
-;; (def c (watch-devices))
-#_(go-loop []
-         (when-let [v (<! c)]
-           (log v)
-           (recur)))
-;; (close! c)
-
 ;; (def monome (first (get-devices)))
 ;; (log monome)
+
 
 ;; (take! (get-info monome) log)
 
