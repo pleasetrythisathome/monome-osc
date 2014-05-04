@@ -1,8 +1,6 @@
 (ns monome-osc.utils
-  (:refer-clojure :exclude [map reduce into partition partition-by take merge])
-  (:require [clojure.core.async :refer :all :as async]
-            [clojure.pprint :refer [pprint]])
-  (:use [overtone.osc]))
+  (:require [clojure.core.async :refer [<!! >!! thread chan]]
+            [clojure.pprint :refer [pprint]]))
 
 (def log-chan (chan))
 

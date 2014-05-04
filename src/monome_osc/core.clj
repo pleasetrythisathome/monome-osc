@@ -6,7 +6,8 @@
         [monome-osc.utils]
         [monome-osc.com]
         [monome-osc.conn]
-        [monome-osc.led]))
+        [monome-osc.led]
+        [monome-osc.anim]))
 
 (def watcher (watch-devices))
 (go-loop []

@@ -1,9 +1,5 @@
 (ns monome-osc.led
-  (:refer-clojure :exclude [map reduce into partition partition-by take merge])
-  (:require [clojure.core.async :refer :all :as async]
-            [clojure.pprint :refer [pprint]])
-  (:use [overtone.osc]
-        [monome-osc.com]))
+  (:use [monome-osc.com]))
 
 (defn row->bitmask
   [row]

@@ -1,7 +1,6 @@
 (ns monome-osc.conn
   (:refer-clojure :exclude [map reduce into partition partition-by take merge])
-  (:require [clojure.core.async :refer :all :as async]
-            [clojure.pprint :refer [pprint]])
+  (:require [clojure.core.async :refer :all :as async])
   (:use [overtone.osc]
         [monome-osc.com]))
 
