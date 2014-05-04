@@ -106,8 +106,10 @@
 (defn listen-to
   [monome]
   (let [prefix (:prefix monome)
-        button (tag-chan :button (listen-path (str prefix "/grid/key")))
-        tilt (tag-chan :tilt (listen-path (str prefix "/tilt")))]
+        button (tag-chan (fn [[x y s]] (case s
+                                        0 :release
+                                        1 :press)) (listen-path (str prefix "/grid/key")))
+        tilt (tag-chan (constantly :tilt) (listen-path (str prefix "/tilt")))]
     (async/merge [button tilt])))
 
 ;; connection
@@ -231,11 +233,20 @@
 ;; (osc-listen server log :debug)
 ;; (osc-rm-listener server :debug)
 
-;; (take! responses log)
-
 ;; (monitor-devices)
+
+;; (def c (watch-devices))
+#_(go-loop []
+         (when-let [v (<! c)]
+           (log v)
+           (recur)))
+;; (close! c)
+
 ;; (def monome (first (get-devices)))
 ;; (log monome)
+
+;; (take! (get-info monome) log)
+
 ;; (set-all monome 1)
 ;; (set-all monome 0)
 
@@ -257,19 +268,13 @@
     [[action args]]
     (print action args)
   (case action
-    :button (pprint args)
+    :press (log :press args)
+    :release (log :release args)
     :tilt nil))
 
-#_(let [events (monome-listen monome)]
-    (go
-     (while true
-       (let [event (<! events)]
-         (handle-event event)))))
-
-;; monitor devices
-
-#_(go
-   (while true
-     (let [devices (<! connected-devices)]
-       (if-let [monome (first (vals devices))]
-         (print :disconnected)))))
+;; (def events (listen-to monome))
+#_(go-loop []
+           (when-let [event (<! events)]
+             (handle-event event)
+             (recur)))
+;; (close! events)
