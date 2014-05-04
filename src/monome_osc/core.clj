@@ -57,7 +57,7 @@
 
 (defn get-devices
   []
-  (clojure.core/map :device @devices))
+  (clojure.core/map :device (vals @devices)))
 
 (defn get-client
   [{:keys [id] :as device}]
@@ -81,40 +81,52 @@
         tilt (tag-chan :tilt (listen-path (str prefix "/tilt")))]
     (async/merge [button tilt])))
 
+;; connection
+
+(defonce connection (chan))
+(defonce mult-connection (mult connection))
 
 (defn connect
   [{:keys [id port prefix] :as device}]
   (let [client (osc-client host port)
         events (listen-to device)]
-    (log :connect device)
+    (osc-send client "/sys/port" (:server PORTS))
+    (set-prefix device prefix)
     (swap! devices #(assoc % id {:device device
                                  :client client
                                  :events events}))
-    (osc-send client "/sys/port" (:server PORTS))
-    (set-prefix device prefix)))
+    (put! connection {:action :connect
+                      :device device})))
 
 (defn disconnect
   [{:keys [id] :as device}]
+  (put! connection {:action :disconnect
+                    :device device})
   (let [client (get-client device)]
     (osc-close client)
     (swap! devices #(dissoc % id))))
 
+(defn watch-devices []
+  (let [out (chan)]
+    (tap mult-connection out)
+    out))
 
-(defn request-info [path]
+(defn request-serialosc [path]
   (osc-send to-serialosc path host (:server PORTS)))
 
 (defn monitor-devices
   []
-  (let [handlers [[:add "/serialosc/device"]
-                  [:add "/serialosc/add"]
-                  [:remove "/serialosc/remove"]]
-        connection (async/merge (clojure.core/map (fn [[tag path]]
-                                                    (tag-chan tag (listen-path path))) handlers))]
+  (let [paths [[:add "/serialosc/device"]
+               [:add "/serialosc/add"]
+               [:remove "/serialosc/remove"]]
+        serialosc (async/merge (clojure.core/map (fn [[tag path]]
+                                                   (tag-chan (constantly tag) (listen-path path)))
+                                                 paths))]
     (reset! devices {})
-    (request-info "/serialosc/list")
+    (request-serialosc "/serialosc/list")
     (go
      (loop []
-       (when-let [[action [id type port]] (<! connection)]
+       (when-let [[action [id type port]] (<! serialosc)]
          (let [device {:id (keyword id)
                        :type type
                        :port port
@@ -122,14 +134,8 @@
            (case action
             :add (connect device)
             :remove (disconnect device)))
-         (request-info "/serialosc/notify")
+         (request-serialosc "/serialosc/notify")
          (recur))))))
-
-(defn watch-devices []
-  (let [out (chan)]
-    (add-watch devices :change (fn [key ref old new] (when-not (= old new)
-                                                      (put! out new))))
-    out))
 
 ;; led
 
