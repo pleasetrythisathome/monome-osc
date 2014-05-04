@@ -11,13 +11,15 @@
 (thread
  (loop []
    (when-let [v (<!! log-chan)]
-     (println v)
+     (pprint v)
      (recur)))
  (println "Log Closed"))
 
+;; (close! log-chan)
+
 (defn log [& msgs]
   (doseq [msg msgs]
-    (>!! log-chan (or msg "nil"))))
+    (>!! log-chan (or msg "**nil**"))))
 
 ;; communication
 
@@ -34,12 +36,15 @@
 (defonce broadcaster (pub responses :path))
 
 (defn listen-path
-  [tag path]
-  (let [listener (chan)
-        out (chan)]
-    (sub broadcaster path listener)
-    (take! listener #(put! out [tag (:args %)]))
-    out))
+  [path]
+  (let [out (chan)]
+    (sub broadcaster path out)
+    (async/map< :args out)))
+
+(defn tag-chan
+  [tag in]
+  (async/map< (partial vector tag) in))
+
 
 ;; devices
 
@@ -67,14 +72,16 @@
 (defn listen-to
   [monome]
   (let [prefix (:prefix monome)
-        handlers [[:button (str prefix "/grid/key")]
-                  [:tilt (str prefix "/tilt")]]]
-    (async/merge (clojure.core/map #(apply listen-path %) handlers))))
+        button (tag-chan :button (listen-path (str prefix "/grid/key")))
+        tilt (tag-chan :tilt (listen-path (str prefix "/tilt")))]
+    (async/merge [button tilt])))
+
 
 (defn connect
   [{:keys [id port prefix] :as device}]
   (let [client (osc-client host port)
         events (listen-to device)]
+    (log :connect device)
     (swap! devices #(assoc % id {:device device
                                  :client client
                                  :events events}))
@@ -96,7 +103,8 @@
   (let [handlers [[:add "/serialosc/device"]
                   [:add "/serialosc/add"]
                   [:remove "/serialosc/remove"]]
-        connection (async/merge (clojure.core/map #(apply listen-path %) handlers))]
+        connection (async/merge (clojure.core/map (fn [[tag path]]
+                                                    (tag-chan tag (listen-path path))) handlers))]
     (reset! devices {})
     (request-info "/serialosc/list")
     (go
