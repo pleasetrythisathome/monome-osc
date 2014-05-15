@@ -16,18 +16,16 @@
   (let [client (osc-client host port)]
     (osc-send client "/sys/port" (:server PORTS))
 
-    (let [info (<!! (get-info raw client))
+    (let [info (<!! (get-info client))
           device (create-device (merge raw info) client)]
-      (set-prefix device prefix client)
-      (log device)
-      (log (class device))
+      (set-prefix device prefix)
       (swap! devices assoc id device)
       (put! connection {:action :connect
-                        :device (:info device)}))))
+                        :device device}))))
 
 (defn disconnect
-  [{:keys [id] :as device}]
-  (let [client (get-client device)]
+  [id]
+  (let [{:keys [client info] :as device} (get-device id)]
     (osc-close client)
     (swap! devices #(dissoc % id))
     (put! connection {:action :disconnect
@@ -59,7 +57,7 @@
                              :prefix (str "/" id)}]
                  (case action
                    :add (connect device)
-                   :remove (disconnect device)))
+                   :remove (disconnect id)))
                (request-serialosc "/serialosc/notify")
                (recur)))))
 

@@ -20,7 +20,7 @@
   [path]
   (let [out (chan (sliding-buffer 1))]
     (sub pub-responses path out)
-    (async/map< :args out)))
+    (async/map< :args out)))x
 
 (defn tag-chan
   [tagfn in]
@@ -37,46 +37,41 @@
 
 (defn get-devices
   []
-  (map :info (vals @devices)))
+  (vals @devices))
+(defn get-device [id]
+  (get @devices id))
 
-(defn get-client
-  [{:keys [id] :as device}]
-  (get-in @devices [id :client]))
-
-(defn send-to [{:keys [prefix] :as device} path & args]
-  (let [client (get-client device)]
-    (apply (partial osc-send client (str prefix path)) args)))
+(defn send-to [{client :client {prefix :prefix} :info} path & args]
+  (apply (partial osc-send client (str prefix path)) args))
 
 (defn set-prefix
-  ([device prefix] (set-prefix device prefix (get-client device)))
-  ([device prefix client]
+  ([{:keys [client] :as device} prefix]
      (osc-send client "/sys/prefix" prefix)))
 
 (defn get-info
-  ([device] (get-info device (get-client device)))
-  ([device client]
-     (let [out (chan)
-           paths [[:port "/sys/port"]
-                  [:host "/sys/host"]
-                  [:id "/sys/id"]
-                  [:prefix "/sys/prefix"]
-                  [:rotation "/sys/rotation"]
-                  [:size "/sys/size"]]
-           listeners (map (fn [[tag path]]
-                            (tag-chan (constantly tag) (listen-path path)))
-                          paths)
-           fail (timeout 1000)]
-       (go
-        (osc-send client "/sys/info")
-        (loop [info {} failed false]
-          (if (or failed (every? #(contains? info %) (map first paths)))
-            (do
-              (map close! listeners)
-              (put! out info))
-            (if-let [[[tag v] c] (alts! (conj listeners fail))]
-              (let [parsed (if (= 1 (count v))
-                             (first v)
-                             (into-array v))]
-                (recur (assoc info tag parsed) false))
-              (recur info true)))))
-       out)))
+  [client]
+  (let [out (chan)
+        paths [[:port "/sys/port"]
+               [:host "/sys/host"]
+               [:id "/sys/id"]
+               [:prefix "/sys/prefix"]
+               [:rotation "/sys/rotation"]
+               [:size "/sys/size"]]
+        listeners (map (fn [[tag path]]
+                         (tag-chan (constantly tag) (listen-path path)))
+                       paths)
+        fail (timeout 1000)]
+    (go
+     (osc-send client "/sys/info")
+     (loop [info {} failed false]
+       (if (or failed (every? #(contains? info %) (map first paths)))
+         (do
+           (map close! listeners)
+           (put! out info))
+         (if-let [[[tag v] c] (alts! (conj listeners fail))]
+           (let [parsed (if (= 1 (count v))
+                          (first v)
+                          (into-array v))]
+             (recur (assoc info tag parsed) false))
+           (recur info true)))))
+    out))
