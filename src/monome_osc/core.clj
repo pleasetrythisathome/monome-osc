@@ -49,8 +49,8 @@
  (set-led monome 0 0 1)
  (set-led monome 0 0 0)
 
- (def row-on (apply vector (repeat 10 1)))
- (def row-off (apply vector (repeat 10 0)))
+ (def row-on (apply vector (repeat 8 1)))
+ (def row-off (apply vector (repeat 8 0)))
  (set-row monome 0 0 [row-on])
  (set-row monome 0 0 [row-off])
 
@@ -79,6 +79,8 @@
 
  (def arc (second (get-devices)))
  (log arc)
+
+ (connect-animation arc)
 
  (set-all arc 0 15)
  (set-all arc 0 0)

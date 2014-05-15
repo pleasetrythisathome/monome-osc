@@ -7,14 +7,11 @@
 
 (defprotocol Device
   (listen-to [device])
-
   (set-led
     [device x y s])
-
   (set-all
     [grid s]
     [arc n l])
-
   (set-map
     [grid x-off y-off s]
     [arc n l]))
@@ -34,12 +31,6 @@
 
 (defprotocol Animation
   (connect-animation [device]))
-
-(extend-protocol ConnectAnim
-  Monome
-  Arc
-  )
-
 
 (defn row->bitmask
   [row]
@@ -82,19 +73,19 @@
   (set-column-level [grid x y-off l]
     (apply send-to grid "/grid/led/level/col" x y-off (map row->bitmask l)))
   Animation
-  (connect-animation [{:keys [size] :as monome}]
-    (let [speed 25
+  (connect-animation [monome]
+    (let [size (get-in monome [:info :size])
+          speed 25
           cols (first size)
           rows (second size)
           on (apply vector (repeat rows 1))
           off (apply vector (repeat rows 0))]
-      (go
-       (loop [col 0]
-         (set-column monome col 0 on)
-         (<! (timeout speed))
-         (set-column monome col 0 off)
-         (when (< col cols)
-           (recur (inc col))))))))
+      (go-loop [col 0]
+               (set-column monome col 0 [on])
+               (<! (timeout speed))
+               (set-column monome col 0 [off])
+               (when (< col cols)
+                 (recur (inc col)))))))
 
 (defrecord Arc [info client]
   Device
@@ -102,8 +93,8 @@
     [device]
     (let [prefix (get-in device [:info :prefix])
           key (tag-chan (fn [[n s]] (case s
-                                         0 :release
-                                         1 :press)) (listen-path (str prefix "/enc/key")))
+                                     0 :release
+                                     1 :press)) (listen-path (str prefix "/enc/key")))
           enc (tag-chan (constantly :delta) (listen-path (str prefix "/enc/delta")))
           tilt (tag-chan (constantly :tilt) (listen-path (str prefix "/tilt")))]
       (async/merge [key enc tilt])))
@@ -131,12 +122,11 @@
                  (let [l (- 15 (Math/floor (map-range (abs (- led 32)) 0 32 0 15)))]
                    (set-led arc n led l))
                  (<! (timeout speed))
-                 (set-led arc n led 0))))
-
-            (go
-              (doseq [n (range 12)]
-                (<! (timeout 100))
-                (circle arc (mod n 4) 15)))])))
+                 (set-led arc n led 0))))]
+      (go
+       (doseq [n (range 12)]
+         (<! (timeout 100))
+         (circle arc (mod n 4) 15))))))
 
 (defmulti create-device (fn [info client]
                           (every? zero? (:size info))))
