@@ -1,6 +1,8 @@
 (ns monome-osc.conn
-  (:refer-clojure :exclude [map reduce into partition partition-by take merge])
-  (:require [clojure.core.async :refer :all :as async])
+  (:require [clojure.core.async
+             :refer :all
+             :exclude [map reduce into partition partition-by take merge]
+             :as async])
   (:use [overtone.osc]
         [monome-osc.com]))
 
@@ -14,7 +16,7 @@
     (osc-send client "/sys/port" (:server PORTS))
     (set-prefix device prefix client)
     (let [info (<!! (get-info device client))]
-      (swap! devices assoc id {:info info
+      (swap! devices assoc id {:info (merge device info)
                                :client client
                                :events events})
       (put! connection {:action :connect
@@ -41,7 +43,7 @@
   (let [paths [[:add "/serialosc/device"]
                [:add "/serialosc/add"]
                [:remove "/serialosc/remove"]]
-        serialosc (async/merge (clojure.core/map (fn [[tag path]]
+        serialosc (async/merge (map (fn [[tag path]]
                                                    (tag-chan (constantly tag) (listen-path path)))
                                                  paths))]
     (reset! devices {})
