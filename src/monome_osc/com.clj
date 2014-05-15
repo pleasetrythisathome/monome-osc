@@ -20,7 +20,7 @@
   [path]
   (let [out (chan (sliding-buffer 1))]
     (sub pub-responses path out)
-    (async/map< :args out)))x
+    (async/map< :args out)))
 
 (defn tag-chan
   [tagfn in]

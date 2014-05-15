@@ -8,9 +8,7 @@
         [monome-osc.utils]
         [monome-osc.com]
         [monome-osc.conn]
-        ;;[monome-osc.led]
-        [monome-osc.anim]
-        [monome-osc.arc]))
+        [monome-osc.device]))
 
 (comment
  ;; debug
