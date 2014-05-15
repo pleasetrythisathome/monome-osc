@@ -4,23 +4,26 @@
              :exclude [map reduce into partition partition-by take merge]
              :as async])
   (:use [overtone.osc]
-        [monome-osc.com]))
+        [monome-osc.utils]
+        [monome-osc.com]
+        [monome-osc.device]))
 
 (defonce connection (chan))
 (defonce mult-connection (mult connection))
 
 (defn connect
-  [{:keys [id port prefix] :as device}]
-  (let [client (osc-client host port)
-        events (listen-to device)]
+  [{:keys [id port prefix] :as raw}]
+  (let [client (osc-client host port)]
     (osc-send client "/sys/port" (:server PORTS))
-    (set-prefix device prefix client)
-    (let [info (<!! (get-info device client))]
-      (swap! devices assoc id {:info (merge device info)
-                               :client client
-                               :events events})
+
+    (let [info (<!! (get-info raw client))
+          device (create-device (merge raw info) client)]
+      (set-prefix device prefix client)
+      (log device)
+      (log (class device))
+      (swap! devices assoc id device)
       (put! connection {:action :connect
-                        :device info}))))
+                        :device (:info device)}))))
 
 (defn disconnect
   [{:keys [id] :as device}]
@@ -44,19 +47,20 @@
                [:add "/serialosc/add"]
                [:remove "/serialosc/remove"]]
         serialosc (async/merge (map (fn [[tag path]]
-                                                   (tag-chan (constantly tag) (listen-path path)))
-                                                 paths))]
+                                      (tag-chan (constantly tag) (listen-path path)))
+                                    paths))]
     (reset! devices {})
     (request-serialosc "/serialosc/list")
-    (go
-     (loop []
-       (when-let [[action [id type port]] (<! serialosc)]
-         (let [device {:id id
-                       :type type
-                       :port port
-                       :prefix (str "/" id)}]
-           (case action
-            :add (connect device)
-            :remove (disconnect device)))
-         (request-serialosc "/serialosc/notify")
-         (recur))))))
+    (go-loop []
+             (when-let [[action [id type port]] (<! serialosc)]
+               (let [device {:id id
+                             :type type
+                             :port port
+                             :prefix (str "/" id)}]
+                 (case action
+                   :add (connect device)
+                   :remove (disconnect device)))
+               (request-serialosc "/serialosc/notify")
+               (recur)))))
+
+(monitor-devices)

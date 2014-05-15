@@ -13,24 +13,24 @@
   [monome state]
   (send-to monome "/grid/led/all" state))
 
-(defn set-quad
-  "state is a [] size 8 where [[row] ...]"
+(defn set-map
+  "state is [8][8]"
   [monome x-off y-off state]
-  (send-to monome "/grid/led/map" x-off y-off (map row->bitmask state)))
+  (apply send-to monome "/grid/led/map" x-off y-off (map row->bitmask state)))
 
 (defn set-row
-  "x-off must be a multiple of 8"
+  "x-off must be a multiple of 8, state is [n][8] rows to be updated"
   [monome x-off y state]
-  (send-to monome "/grid/led/row" x-off y (row->bitmask state)))
+  (apply send-to monome "/grid/led/row" x-off y (map row->bitmask state)))
 
 (defn set-column
-  "x-off must be a multiple of 8"
+  "y-off must be a multiple of 8, state is [n][8] columns to be updated"
   [monome x y-off state]
-  (send-to monome "/grid/led/col" x y-off (row->bitmask state)))
+  (apply send-to monome "/grid/led/col" x y-off (map row->bitmask state)))
 
 ;; brightness
 
-(defn set-brightness
+(defn set-brightness-led
   [monome x y l]
   (send-to monome "/grid/led/level/set" x y l))
 
@@ -38,14 +38,17 @@
   [monome l]
   (send-to monome "/grid/led/level/all" l))
 
-;; (defn set-brightness-map
-;;   [monome x-off y-off state]
-;;   (send-to monome "/grid/led/level/map" x-off y-off (row->bitmask state)))
+(defn set-brightness-map
+  "state is [8][8]"
+  [monome x-off y-off state]
+  (apply send-to monome "/grid/led/level/map" x-off y-off (map row->bitmask state)))
 
-;; (defn set-brightness-row
-;;   [monome x-off y state]
-;;   (send-to monome "/grid/led/level/row" x-off y (row->bitmask state)))
+(defn set-brightness-row
+  "x-off must be a multiple of 8, state is [n][8] rows to be updated"
+  [monome x-off y state]
+  (apply send-to monome "/grid/led/level/row" x-off y (map row->bitmask state)))
 
-;; (defn set-brightness-col
-;;   [monome x y-off state]
-;;   (send-to monome "/grid/led/level/col" x y-off (row->bitmask state)))
+(defn set-brightness-col
+  "y-off must be a multiple of 8, state is [n][8] columns to be updated"
+  [monome x y-off state]
+  (apply send-to monome "/grid/led/level/col" x y-off (map row->bitmask state)))

@@ -1,29 +1,14 @@
-(ns monome-osc.devices
+(ns monome-osc.device
+  (:require [clojure.core.async
+             :refer :all
+             :exclude [map reduce into partition partition-by take merge]
+             :as async])
   (:use [monome-osc.com]))
-
-(defonce devices (atom {}))
-
-(defn get-devices
-  []
-  (clojure.core/map :info (vals @devices)))
-
-(defn get-client
-  [{:keys [id] :as device}]
-  (get-in @devices [id :client]))
-
-(defn send-to [{:keys [prefix] :as device} path & args]
-  (let [client (get-client device)]
-    (apply (partial osc-send client (str prefix path)) args)))
-
-(defn set-prefix
-  ([device prefix] (set-prefix device prefix (get-client device)))
-  ([device prefix client]
-     (osc-send client "/sys/prefix" prefix)))
 
 (defprotocol Device
   (listen-to [device]))
 
-(defrecord Monome [info]
+(defrecord Monome [info client]
   Device
   (listen-to
     [device]
@@ -34,7 +19,7 @@
           tilt (tag-chan (constantly :tilt) (listen-path (str prefix "/tilt")))]
       (async/merge [key tilt]))))
 
-(defrecord Arc [info]
+(defrecord Arc [info client]
   Device
   (listen-to
     [device]
@@ -46,10 +31,9 @@
           tilt (tag-chan (constantly :tilt) (listen-path (str prefix "/tilt")))]
       (async/merge [key enc tilt]))))
 
-(defmulti create-device :size)
-(defmethod create-device [0 0]
-  [info]
-  (Arc. info))
-(defmethod create-device :default
-  [info]
-  (Monome. info))
+(defmulti create-device (fn [info client]
+                          (every? zero? (:size info))))
+(defmethod create-device true [info client]
+  (Arc. info client))
+(defmethod create-device false [info client]
+  (Monome. info client))
