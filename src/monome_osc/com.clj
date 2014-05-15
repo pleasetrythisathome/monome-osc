@@ -31,25 +31,6 @@
                                    (tag-chan (constantly tag) (listen-path path)))
                                  paths)))
 
-(defonce devices (atom {}))
-
-(defn get-devices
-  []
-  (clojure.core/map :info (vals @devices)))
-
-(defn get-client
-  [{:keys [id] :as device}]
-  (get-in @devices [id :client]))
-
-(defn send-to [{:keys [prefix] :as device} path & args]
-  (let [client (get-client device)]
-    (apply (partial osc-send client (str prefix path)) args)))
-
-(defn set-prefix
-  ([device prefix] (set-prefix device prefix (get-client device)))
-  ([device prefix client]
-     (osc-send client "/sys/prefix" prefix)))
-
 (defn get-info
   ([device] (get-info device (get-client device)))
   ([device client]
@@ -78,12 +59,3 @@
                 (recur (assoc info tag parsed) false))
               (recur info true)))))
        out)))
-
-(defn listen-to
-  [monome]
-  (let [prefix (:prefix monome)
-        button (tag-chan (fn [[x y s]] (case s
-                                        0 :release
-                                        1 :press)) (listen-path (str prefix "/grid/key")))
-        tilt (tag-chan (constantly :tilt) (listen-path (str prefix "/tilt")))]
-    (async/merge [button tilt])))
