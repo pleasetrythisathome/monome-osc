@@ -19,6 +19,7 @@
     (let [info (<!! (get-info client))
           device (create-device (merge raw info) client)]
       (set-prefix device prefix)
+      (connect-animation device)
       (swap! devices assoc id device)
       (put! connection {:action :connect
                         :device device}))))
