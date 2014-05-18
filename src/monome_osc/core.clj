@@ -1,14 +1,13 @@
 (ns monome-osc.core
-  (:require [clojure.core.async
-             :refer :all
-             :exclude [map reduce into partition partition-by take merge]
-             :as async]
-            [clojure.pprint :refer [pprint]]
-            [overtone.live :as o])
-  (:use [monome-osc.utils]
-        [monome-osc.com]
-        [monome-osc.conn]
-        [monome-osc.device]))
+  (:require [monome-osc com conn device])
+  (:use [overtone.helpers.ns]))
+
+(immigrate
+ 'monome-osc.com
+ 'monome-osc.conn
+ 'monome-osc.device)
+
+(monitor-devices)
 
 ;; debug
 ;; (o/osc-debug true)
