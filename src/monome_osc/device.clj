@@ -3,7 +3,8 @@
              :refer :all
              :exclude [map reduce into partition partition-by take merge]
              :as async])
-  (:use [monome-osc.com]))
+  (:use [monome-osc.com]
+        [monome-osc.utils]))
 
 (defprotocol Device
   (listen-to [device])
@@ -21,11 +22,11 @@
   (set-row [grid x-off y s])
   (set-column [grid x y-off s])
 
-  (let-led-level [grid x y l])
-  (let-all-level [grid l])
-  (let-map-level [grid x-off y-off l])
-  (let-row-level [grid x-off y l])
-  (let-column-level [grid x y-off l]))
+  (set-led-level [grid x y l])
+  (set-all-level [grid l])
+  (set-map-level [grid x-off y-off l])
+  (set-row-level [grid x-off y l])
+  (set-column-level [grid x y-off l]))
 
 (defprotocol Ring
   (set-range [arc n x1 x2 l]))
@@ -51,8 +52,8 @@
   (set-map [grid x-off y-off s]
     ;; state is [8][8]
     (apply send-to grid "/grid/led/map" x-off y-off (map row->bitmask s)))
-  [clear-all [grid]
-   (set-all grid 0)]
+  (clear-all [grid]
+    (set-all grid 0))
   Grid
   (set-row [grid x-off y s]
     ;; x-off must be a multiple of 8, state is [n][8] rows to be updated

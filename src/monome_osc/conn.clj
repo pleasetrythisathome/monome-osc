@@ -10,6 +10,12 @@
 (defonce connection (chan))
 (defonce mult-connection (mult connection))
 
+(defonce devices (atom {}))
+
+(defn get-devices
+  []
+  (vals @devices))
+
 (defn connect
   [{:keys [id port prefix] :as raw}]
   (let [client (osc-client host port)]
@@ -22,12 +28,6 @@
       (swap! devices assoc id device)
       (put! connection {:action :connect
                         :device device}))))
-
-(defonce devices (atom {}))
-
-(defn get-devices
-  []
-  (vals @devices))
 
 (defn disconnect
   [id]
