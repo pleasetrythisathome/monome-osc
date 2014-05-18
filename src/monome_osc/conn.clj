@@ -24,7 +24,7 @@
                           :arc monome_osc.device.Arc)]
        (nth (filter #(= (class %) device-class)
                     (get-devices))
-            n))))
+            n nil))))
 
 (defn connect
   [{:keys [id port prefix] :as raw}]
