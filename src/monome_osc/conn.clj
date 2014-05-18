@@ -4,7 +4,6 @@
              :exclude [map reduce into partition partition-by take merge]
              :as async])
   (:use [overtone.osc]
-        [monome-osc.utils]
         [monome-osc.com]
         [monome-osc.device]))
 
@@ -23,6 +22,12 @@
       (swap! devices assoc id device)
       (put! connection {:action :connect
                         :device device}))))
+
+(defonce devices (atom {}))
+
+(defn get-devices
+  []
+  (vals @devices))
 
 (defn disconnect
   [id]
@@ -61,5 +66,3 @@
                    :remove (disconnect id)))
                (request-serialosc "/serialosc/notify")
                (recur)))))
-
-(monitor-devices)
