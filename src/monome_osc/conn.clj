@@ -16,6 +16,16 @@
   []
   (vals @devices))
 
+(defn get-device
+  ([type] (get-device type 0))
+  ([type n]
+     (let [device-class (case type
+                          :monome monome_osc.device.Monome
+                          :arc monome_osc.device.Arc)]
+       (nth (filter #(= (class %) device-class)
+                    (get-devices))
+            n))))
+
 (defn connect
   [{:keys [id port prefix] :as raw}]
   (let [client (osc-client host port)]

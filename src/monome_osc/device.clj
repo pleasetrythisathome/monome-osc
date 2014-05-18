@@ -3,8 +3,7 @@
              :refer :all
              :exclude [map reduce into partition partition-by take merge]
              :as async])
-  (:use [monome-osc.com]
-        [monome-osc.utils]))
+  (:use [monome-osc.com]))
 
 (defprotocol Device
   (listen-to [device])
