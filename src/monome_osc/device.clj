@@ -15,7 +15,7 @@
   (set-map
     [grid x-off y-off s]
     [arc n l])
-  (clear-all [device]))
+  (reset-device [device]))
 
 (defprotocol Grid
   (set-row [grid x-off y s])
@@ -55,7 +55,7 @@
   (set-map [grid x-off y-off s]
     ;; state is [8][8]
     (apply send-to grid "/grid/led/map" x-off y-off (map row->bitmask s)))
-  (clear-all [grid]
+  (reset-device [grid]
     (set-all grid 0))
   Grid
   (set-row [grid x-off y s]
@@ -109,7 +109,7 @@
   (set-map [arc n l]
     ;; l is a list of 64 integers (< 0 x 16)
     (apply send-to arc "/ring/map" n l))
-  (clear-all [arc]
+  (reset-device [arc]
     (doseq [n (range 4)]
       (set-all arc n 0)))
   Ring
