@@ -26,7 +26,7 @@
 
 (defn disconnect
   [id]
-  (let [{:keys [client info] :as device} (get-device id)]
+  (let [{:keys [client info] :as device} (get @devices id)]
     (osc-close client)
     (swap! devices #(dissoc % id))
     (put! connection {:action :disconnect

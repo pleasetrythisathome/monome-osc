@@ -38,8 +38,16 @@
 (defn get-devices
   []
   (vals @devices))
-(defn get-device [id]
-  (get @devices id))
+
+(defn get-device
+  ([type] (get-device type 0))
+  ([type n]
+     (let [device-class (case type
+                          :monome monome_osc.device.Monome
+                          :arc monome_osc.device.Arc)]
+       (nth (filter #(= (class %) device-class)
+                    (get-devices))
+            n))))
 
 (defn send-to [{client :client {prefix :prefix} :info} path & args]
   (apply (partial osc-send client (str prefix path)) args))
@@ -47,6 +55,10 @@
 (defn set-prefix
   ([{:keys [client] :as device} prefix]
      (osc-send client "/sys/prefix" prefix)))
+
+(defn set-rotation
+  ([{:keys [client] :as device} degrees]
+     (osc-send client "/sys/rotation" degrees)))
 
 (defn get-info
   [client]
