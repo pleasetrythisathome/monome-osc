@@ -11,6 +11,7 @@
 (defonce mult-connection (mult connection))
 
 (defonce devices (atom {}))
+(defonce events (atom {}))
 
 (defn get-devices
   []
@@ -26,6 +27,12 @@
                     (get-devices))
             n nil))))
 
+(defn sub-device [device key]
+  (let [{:keys [id]} (:info device)
+        out (chan (sliding-buffer 1))]
+    (sub (get @events id) key out)
+    (async/map< second out)))
+
 (defn connect
   [{:keys [id port prefix] :as raw}]
   (let [client (osc-client host port)]
@@ -36,6 +43,7 @@
       (set-prefix device prefix)
       (connect-animation device)
       (swap! devices assoc id device)
+      (swap! events assoc id (pub (listen-to device) first))
       (put! connection {:action :connect
                         :device device}))))
 
