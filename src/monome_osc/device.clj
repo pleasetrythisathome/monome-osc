@@ -34,6 +34,10 @@
 (defprotocol Animation
   (connect-animation [device]))
 
+(defn row->bitmask
+  [row]
+  (Integer/parseInt (apply str row) 2))
+
 (defrecord Monome [info client]
   Device
   (listen-to
