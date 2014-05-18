@@ -13,6 +13,10 @@
 
 ;; (close! log-chan)
 
-(defn log [& msgs]
+(defn log-c [& msgs]
   (doseq [msg msgs]
     (>!! log-chan (or msg "**nil**"))))
+
+(defn row->bitmask
+  [row]
+  (Integer/parseInt (apply str row) 2))
