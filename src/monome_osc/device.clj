@@ -59,22 +59,22 @@
     (set-all grid 0))
   Grid
   (set-row [grid x-off y s]
-    ;; x-off must be a multiple of 8, state is [n][8] rows to be updated
-    (apply send-to grid "/grid/led/row" x-off y (map row->bitmask s)))
+    ;; x-off must be a multiple of 8, state is [8] leds to be updated
+    (send-to grid "/grid/led/row" x-off y (row->bitmask s)))
   (set-column [grid x y-off s]
-    ;; y-off must be a multiple of 8, state is [n][8] columns to be updated
-    (apply send-to grid "/grid/led/col" x y-off (map row->bitmask s)))
+    ;; y-off must be a multiple of 8, state is [8] leds to be updated
+    (send-to grid "/grid/led/col" x y-off (row->bitmask s)))
 
   (set-led-level [grid x y l]
     (send-to grid "/grid/led/level/set" x y l))
   (set-all-level [grid l]
     (send-to grid "/grid/led/level/all" l))
   (set-map-level [grid x-off y-off l]
-    (apply send-to grid "/grid/led/level/map" x-off y-off (map row->bitmask l)))
+    (apply send-to grid "/grid/led/level/map" x-off y-off l))
   (set-row-level [grid x-off y l]
-    (apply send-to grid "/grid/led/level/row" x-off y (map row->bitmask l)))
+    (apply send-to grid "/grid/led/level/row" x-off y l))
   (set-column-level [grid x y-off l]
-    (apply send-to grid "/grid/led/level/col" x y-off (map row->bitmask l)))
+    (apply send-to grid "/grid/led/level/col" x y-off l))
   Animation
   (connect-animation [monome]
     (let [size (get-in monome [:info :size])

@@ -1,5 +1,6 @@
 (ns monome-osc.core-test
   (:require [clojure.test :refer :all]
+            [clojure.core.async :refer [go go-loop <! chan timeout close!]]
             [monome-osc.core :refer :all]
             [clojure.pprint :refer [pprint]])
   (:use [overtone.osc]))
@@ -7,7 +8,7 @@
 ;; debug
 ;; (osc-debug true)
 ;; (osc-debug false)
-;; (osc-listen server log-c :debug)
+;; (osc-listen server (fn [& args] (doseq [a args] (pprint a)) :debug))
 ;; (osc-rm-listener server :debug)
 
 (def watcher (watch-devices))
@@ -23,38 +24,35 @@
 
 (def monome (get-device :monome))
 (pprint (:info monome))
+(set-rotation monome 0)
 
 (set-all monome 1)
-(set-all monome 0)
+(reset-device monome)
 
 (set-all-level monome 10)
-(set-all-level monome 15)
+(set-led monome 0 0 1)
 
 (let [[w h] (get-in monome [:info :size])]
   (doseq [x (range w)
           y (range h)]
     (set-led-level monome x y x)))
 
-(set-led monome 0 0 1)
-(set-led monome 0 0 0)
+(set-row monome 0 0 (repeat 8 1))
+(set-column monome 0 0 (repeat 8 1))
 
-(def row-on (into [] (repeat 8 1)))
-(def row-off (into [] (repeat 8 0)))
-(set-row monome 0 0 [row-on])
-(set-row monome 0 0 [row-off])
-
-(set-column monome 0 0 [row-on])
-(set-column monome 0 0 [row-off])
+(set-row-level monome 0 0 (repeat 8 10))
+(set-column-level monome 0 0 (repeat 8 10))
 
 (set-map monome 0 0 (for [y (range 8)]
                       (into [] (repeat 8 1))))
-(set-map-level monome 0 0 (for [y (range 8)]
-                            (into [] (map #(+ % y) (range 8)))))
+(set-map-level monome 0 0 (mapcat identity (for [y (range 8)]
+                                             (into [] (map #(+ % y) (range 8))))))
 
 (connect-animation monome)
 
 (defn handle-event
   [[action args]]
+  (pprint action args)
   (case action
     :press (pprint :press args)
     :release (pprint :release args)
