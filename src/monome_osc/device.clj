@@ -14,17 +14,18 @@
     [arc n l])
   (set-map
     [grid x-off y-off s]
-    [arc n l]))
+    [arc n l])
+  (clear [device]))
 
 (defprotocol Grid
   (set-row [grid x-off y s])
   (set-column [grid x y-off s])
 
-  (set-led-level [grid x y s])
-  (set-all-level [grid s])
-  (set-map-level [grid x-off y-off s])
-  (set-row-level [grid x-off y s])
-  (set-column-level [grid x y-off s]))
+  (let-led-level [grid x y l])
+  (let-all-level [grid l])
+  (let-map-level [grid x-off y-off l])
+  (let-row-level [grid x-off y l])
+  (let-column-level [grid x y-off l]))
 
 (defprotocol Ring
   (set-range [arc n x1 x2 l]))
@@ -50,6 +51,8 @@
   (set-map [grid x-off y-off s]
     ;; state is [8][8]
     (apply send-to grid "/grid/led/map" x-off y-off (map row->bitmask s)))
+  [clear [grid]
+   (set-all grid 0)]
   Grid
   (set-row [grid x-off y s]
     ;; x-off must be a multiple of 8, state is [n][8] rows to be updated
@@ -102,6 +105,9 @@
   (set-map [arc n l]
     ;; l is a list of 64 integers (< 0 x 16)
     (apply send-to arc "/ring/map" n l))
+  (clear [arc]
+    (doseq [n (range 4)]
+      (set-all arc n 0)))
   Ring
   (set-range [arc n x1 x2 l]
     (send-to arc "/ring/range" n x1 x2 l))
