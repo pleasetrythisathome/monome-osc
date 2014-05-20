@@ -5,6 +5,7 @@
 (immigrate
  'monome-osc.com
  'monome-osc.conn
- 'monome-osc.device)
+ 'monome-osc.device
+ 'monome-osc.events)
 
 (monitor-devices)

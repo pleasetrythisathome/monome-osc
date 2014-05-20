@@ -5,13 +5,13 @@
              :as async])
   (:use [overtone.osc]
         [monome-osc.com]
-        [monome-osc.device]))
+        [monome-osc.device]
+        [monome-osc.events]))
 
 (defonce connection (chan))
 (defonce mult-connection (mult connection))
 
 (defonce devices (atom {}))
-(defonce events (atom {}))
 
 (defn get-devices
   []
@@ -26,19 +26,6 @@
        (nth (filter #(= (class %) device-class)
                     (get-devices))
             n nil))))
-
-(defn reset-events! [device]
-  (let [id (get-in device [:info :id])
-        listener (pub (listen-to device) first)]
-    (when-let [old (get @events id)]
-      (close! old))
-    (swap! events assoc id listener)))
-
-(defn sub-device [device key]
-  (let [{:keys [id]} (:info device)
-        out (chan (sliding-buffer 1))]
-    (sub (get @events id) key out)
-    (async/map< second out)))
 
 (defn connect
   [{:keys [id port prefix] :as raw}]
