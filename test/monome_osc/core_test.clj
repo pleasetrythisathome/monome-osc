@@ -1,8 +1,11 @@
 (ns monome-osc.core-test
   (:require [clojure.test :refer :all]
-            [clojure.core.async :refer [go go-loop <! chan timeout close! thread alts! >!! <!!]]
-            [monome-osc.core :refer :all]
-            [clojure.pprint :refer [pprint]]))
+            [clojure.core.async
+             :refer :all
+             :exclude [map reduce into partition partition-by take merge]
+             :as async]
+            [monome-osc.core :refer :all])
+  (:use [monome-osc.utils-test]))
 
 ;; debug
 ;; (osc-debug true)
@@ -10,27 +13,8 @@
 ;; (osc-listen server (fn [& args] (doseq [a args] (pprint a)) :debug))
 ;; (osc-rm-listener server :debug)
 
-(def log-chan (chan))
-
-(thread
- (loop []
-   (when-let [v (<!! log-chan)]
-     (pprint v)
-     (recur)))
- (println "Log Closed"))
-
-;; (close! log-chan)
-
-(defn log [& msgs]
-  (doseq [msg msgs]
-    (>!! log-chan (or msg "**nil**"))))
-
-(def watcher (watch-devices))
+(def watcher (log-loop (watch-devices)))
 ;; (close! watcher)
-(go-loop []
-         (when-let [{:keys [action device]} (<! watcher)]
-           (pprint action device)
-           (recur)))
 
 ;; tests
 
@@ -64,32 +48,17 @@
 
 (connect-animation monome)
 
-(defn handle-event
-  [[action args]]
-  (pprint action args)
-  (case action
-    :press (pprint :press args)
-    :release (pprint :release args)
-    :delta (pprint :delta args)
-    :tilt nil))
 
-(def events (listen-to monome))
-(go-loop []
-         (when-let [event (<! events)]
-           (handle-event event)
-           (recur)))
-;; (close! events)
+(def all-events (listen-to monome))
+(def mult-events (mult all-events))
+(def test (chan))
+(tap mult-events test)
 
-(defn log-loop [in]
-  (let [control (chan)]
-    (go-loop []
-             (when-let [e (first (alts! [in control]))]
-               (log e)
-               (recur)))
-    control))
 
-(def logger (log-loop (sub-events monome :press)))
+(def logger (log-loop (filter< #(= [0 1] %) (sub-events monome :release))))
 ;; (close! logger)
+(reset-events! monome)
+
 
 
 ;; arc test
@@ -109,9 +78,5 @@
 (set-range arc 0 0 15 15)
 (set-range arc 0 0 15 0)
 
-(def events (listen-to arc))
-;; (close! events)
-(go-loop []
-         (when-let [event (<! events)]
-           (handle-event event)
-           (recur)))
+(def arc-events (log-loop (listen-to arc)))
+;; (close! arc-events)

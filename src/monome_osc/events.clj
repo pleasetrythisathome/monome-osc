@@ -11,7 +11,7 @@
 (defn reset-events! [device]
   (let [id (get-in device [:info :id])
         listener (listen-to device)]
-    (when-let [old (get @events id)]
+    (when-let [old (get-in @events [id :listener])]
       (close! old))
     (swap! events assoc id {:listener  listener
                             :mult (mult listener)
