@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [clojure.core.async :refer [go go-loop <! chan timeout close! thread alts! >!! <!!]]
             [monome-osc.core :refer :all]
-            [clojure.pprint :refer [pprint]])
-  (:use [overtone.osc]))
+            [clojure.pprint :refer [pprint]]))
 
 ;; debug
 ;; (osc-debug true)
@@ -90,7 +89,6 @@
     control))
 
 (def logger (log-loop (sub-events monome :press)))
-(def logger (log-loop (listen-to monome)))
 ;; (close! logger)
 
 
@@ -101,8 +99,7 @@
 
 (connect-animation arc)
 
-(doseq [n (range 4)]
-  (set-all arc n 0))
+(reset-device arc)
 
 (set-all arc 0 15)
 (set-all arc 0 0)

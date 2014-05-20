@@ -17,14 +17,16 @@
                             :mult (mult listener)
                             :pub  (pub listener first)})))
 
-(defn sub-events [device key]
-  (let [{:keys [id]} (:info device)
-        out (chan (sliding-buffer 1))]
-    (sub (get-in @events [id :pub]) key out)
-    (map< second out)))
-
 (defn tap-events [device]
   (let [{:keys [id]} (:info device)
-        out (chan (sliding-buffer 1))]
+        out (chan)]
     (tap (get-in @events [id :mult]) out)
     out))
+
+(defn sub-events
+  ([device] (tap-events device))
+  ([device key]
+     (let [{:keys [id]} (:info device)
+           out (chan)]
+       (sub (get-in @events [id :pub]) key out)
+       (map< second out))))

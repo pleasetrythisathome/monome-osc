@@ -1,6 +1,20 @@
 (ns monome-osc.core
-  (:require [monome-osc com conn device])
-  (:use [overtone.helpers.ns]))
+  (:require [monome-osc com conn device events]))
+
+(defn immigrate
+ "Create a public var in this namespace for each public var in the
+ namespaces named by ns-names. The created vars have the same name, value
+ and metadata as the original except that their :ns metadata value is this
+ namespace."
+ [& ns-names]
+ (doseq [ns ns-names]
+   (doseq [[sym var] (ns-publics ns)]
+     (let [sym (with-meta sym (assoc (meta var) :orig-ns ns))]
+       (if (.isBound var)
+         (intern *ns* sym (if (fn? (var-get var))
+                            var
+                            (var-get var)))
+         (intern *ns* sym))))))
 
 (immigrate
  'monome-osc.com

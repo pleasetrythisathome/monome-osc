@@ -3,8 +3,7 @@
              :refer :all
              :exclude [map reduce into partition partition-by take merge]
              :as async])
-  (:use [overtone.osc]
-        [monome-osc.com]
+  (:use [monome-osc.com]
         [monome-osc.device]
         [monome-osc.events]))
 
