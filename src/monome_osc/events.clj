@@ -15,8 +15,8 @@
       (close! old))
     (swap! events assoc id listener)))
 
-(defn sub-device [device key]
+(defn sub-events [device key]
   (let [{:keys [id]} (:info device)
         out (chan (sliding-buffer 1))]
     (sub (get @events id) key out)
-    (async/map< second out)))
+    (map< second out)))

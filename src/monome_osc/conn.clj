@@ -22,10 +22,10 @@
   ([type n]
      (let [device-class (case type
                           :monome monome_osc.device.Monome
-                          :arc monome_osc.device.Arc)]
-       (nth (filter #(= (class %) device-class)
-                    (get-devices))
-            n nil))))
+                          :arc monome_osc.device.Arc)
+           of-class (filter #(= (class %) device-class)(get-devices))]
+       (when (seq of-class)
+         (nth of-class n nil)))))
 
 (defn connect
   [{:keys [id port prefix] :as raw}]

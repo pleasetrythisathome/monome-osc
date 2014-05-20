@@ -1,6 +1,6 @@
 (ns monome-osc.core-test
   (:require [clojure.test :refer :all]
-            [clojure.core.async :refer [go go-loop <! chan timeout close!]]
+            [clojure.core.async :refer [go go-loop <! chan timeout close! thread alts! >!! <!!]]
             [monome-osc.core :refer :all]
             [clojure.pprint :refer [pprint]])
   (:use [overtone.osc]))
@@ -10,6 +10,21 @@
 ;; (osc-debug false)
 ;; (osc-listen server (fn [& args] (doseq [a args] (pprint a)) :debug))
 ;; (osc-rm-listener server :debug)
+
+(def log-chan (chan))
+
+(thread
+ (loop []
+   (when-let [v (<!! log-chan)]
+     (pprint v)
+     (recur)))
+ (println "Log Closed"))
+
+;; (close! log-chan)
+
+(defn log [& msgs]
+  (doseq [msg msgs]
+    (>!! log-chan (or msg "**nil**"))))
 
 (def watcher (watch-devices))
 ;; (close! watcher)
@@ -24,7 +39,7 @@
 
 (def monome (get-device :monome))
 (pprint (:info monome))
-(set-rotation monome 0)
+(set-rotation monome 180)
 
 (set-all monome 1)
 (reset-device monome)
@@ -65,6 +80,18 @@
            (handle-event event)
            (recur)))
 ;; (close! events)
+
+(defn log-loop [in]
+  (let [control (chan)]
+    (go-loop []
+             (when-let [e (first (alts! [in control]))]
+               (log e)
+               (recur)))
+    control))
+
+(def logger (log-loop (sub-events monome :press)))
+(def logger (log-loop (listen-to monome)))
+;; (close! logger)
 
 
 ;; arc test
