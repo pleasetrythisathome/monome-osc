@@ -27,6 +27,13 @@
                     (get-devices))
             n nil))))
 
+(defn reset-events! [device]
+  (let [id (get-in device [:info :id])
+        listener (pub (listen-to device) first)]
+    (when-let [old (get @events id)]
+      (close! old))
+    (swap! events assoc id listener)))
+
 (defn sub-device [device key]
   (let [{:keys [id]} (:info device)
         out (chan (sliding-buffer 1))]
@@ -43,7 +50,7 @@
       (set-prefix device prefix)
       (connect-animation device)
       (swap! devices assoc id device)
-      (swap! events assoc id (pub (listen-to device) first))
+      (reset-events! device)
       (put! connection {:action :connect
                         :device device}))))
 
