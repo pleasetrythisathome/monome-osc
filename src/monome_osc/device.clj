@@ -42,9 +42,12 @@
   (listen-to
     [device]
     (let [prefix (get-in device [:info :prefix])
-          key (tag-chan (fn [[x y s]] (case s
-                                       0 :release
-                                       1 :press)) (listen-path (str prefix "/grid/key")))
+          key (->> (listen-path (str prefix "/grid/key"))
+                   (tag-chan (fn [[x y s]] (case s
+                                            0 :release
+                                            1 :press)))
+                   (map< (fn [[tag [x y s]]]
+                           [tag [x y]])))
           tilt (tag-chan (constantly :tilt) (listen-path (str prefix "/tilt")))]
       (async/merge [key tilt])))
 
