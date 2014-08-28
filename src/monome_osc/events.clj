@@ -10,12 +10,16 @@
 
 (defn reset-events! [device]
   (let [id (get-in device [:info :id])
-        listener (listen-to device)]
+        listener (listen-to device)
+        m (mult listener)
+        p (let [c (chan)]
+            (tap m c)
+            (pub c first))]
     (when-let [old (get-in @events [id :listener])]
       (close! old))
     (swap! events assoc id {:listener  listener
-                            :mult (mult listener)
-                            :pub  (pub listener first)})))
+                            :mult m
+                            :pub  p})))
 
 (defn tap-events [device]
   (let [{:keys [id]} (:info device)
